@@ -1,0 +1,23 @@
+name: ref check
+on: push
+permissions:
+  contents: write
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: attempt force update of a ruleset-protected ref
+        run: |
+          echo "--- actor identity ---"
+          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/${GITHUB_REPOSITORY} -o /dev/null -w "repo read: %{http_code}\n"
+          echo "--- attempt: force-update refs/heads/side (ruleset non_fast_forward) ---"
+          set +e
+          git push --force origin 9b3cab13378ad93863341b2e63c9883773f6e6de:refs/heads/side 2>&1
+          echo "PUSH_EXIT=$?"
+          echo "--- attempt via the REST API with the same token ---"
+          curl -s -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"sha":"9b3cab13378ad93863341b2e63c9883773f6e6de","force":true}' \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/heads/side
+          echo ""
